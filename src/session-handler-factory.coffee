@@ -33,11 +33,29 @@ module.exports = (container, shell) ->
 
       session.once 'exec', (accept, reject, info) ->
         log.warn {container: container, command: info.command}, 'Client tried to execute a single command with ssh-exec. This is not (yet) supported by Docker-SSH.'
-        console.log 'Client wants to execute: ' + info.command
         stream = accept()
         stream.stderr.write "'#{info.command}' is not (yet) supported by Docker-SSH\n"
         stream.exit 0
         stream.end()
+
+      session.on 'sftp', (accept, reject) ->
+        console.log 'Client wants an SFTP session'
+        sftpStream = accept()
+        sftpStream.on 'OPEN', (reqid, filename, flags, attrs) ->
+          log.info {sftp: 'OPEN', params: [reqid, filename, flags, attrs] }
+        sftpStream.on 'OPENDIR',  ->
+          log.info {sftp: 'OPENDIR', args: arguments }
+        sftpStream.on 'READDIR',  ->
+          log.info {sftp: 'READDIR', args: arguments }
+        sftpStream.on 'FSTAT',  ->
+          log.info {sftp: 'FSTAT', args: arguments }
+        sftpStream.on 'LSTAT',  ->
+          log.info {sftp: 'LSTAT', args: arguments }
+        sftpStream.on 'READLINK',  ->
+          log.info {sftp: 'READLINK', args: arguments }
+        sftpStream.on 'REALPATH', ->
+          log.info {sftp: 'REALPATH', args: arguments }
+
 
       session.on 'err', (err) ->
         log.error {container: container}, err

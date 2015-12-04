@@ -42,8 +42,8 @@ sshServer = new ssh2.Server options, (client, info) ->
     log.info clientIp: info.ip, 'Client disconnected'
     session.close()
 
+log.info 'Docker-SSH ~ Because every container should be accessible'
 sshServer.listen sshPort, ip, ->
-  log.info 'Docker-SSH ~ Because every container should be accessible'
   log.info {host: @address().address, port: @address().port}, 'Listening'
 
 webserver.start httpPort, sessionFactory if httpEnabled
