@@ -1,6 +1,9 @@
 pty     = require 'pty'
 bunyan  = require 'bunyan'
+ssh2    = require 'ssh2'
 log     = bunyan.createLogger name: 'sessionHandler'
+
+STATUS_CODE = ssh2.SFTP_STATUS_CODE
 
 spaces = (text, length) ->(' ' for i in [0..length-text.length]).join ''
 header = (container) ->
@@ -39,23 +42,66 @@ module.exports = (container, shell) ->
         stream.end()
 
       session.on 'sftp', (accept, reject) ->
+        #handles = []
         console.log 'Client wants an SFTP session'
         sftpStream = accept()
         sftpStream.on 'OPEN', (reqid, filename, flags, attrs) ->
           log.info {sftp: 'OPEN', params: [reqid, filename, flags, attrs] }
-        sftpStream.on 'OPENDIR',  ->
+
+        sftpStream.on 'OPENDIR', (reqid, folder) ->
           log.info {sftp: 'OPENDIR', args: arguments }
-        sftpStream.on 'READDIR',  ->
+          #handle.writeUInt32BE(1, 0, true);
+          #sftpStream.attrs(reqid, mode: 777, uid: 100, gid: 100, size: 0)
+          #sftpStream.status(reqid, 0)
+          #sftpStream.status(reqid+1, 0)
+          sftpStream.handle reqid, new Buffer(folder)
+          # sftpStream.name(reqid, [
+          #   filename: '/test/file1'
+          #   longname: '-rwxr--r-- 1 bar bar Dec 8 2015 file1'
+          # ,
+          #   filename: '/test/file2'
+          #   longname: '-rwxr--r-- 1 bar bar Dec 8 2015 file2'
+          # ])
+
+        sftpStream.on 'READDIR', (reqid, handle) ->
           log.info {sftp: 'READDIR', args: arguments }
+          folder = handle.toString()
+          console.log 'readdir', folder
+          sftpStream.name(reqid, [
+            filename: 'file1'
+            longname: '-rwxr--r-- 1 bar bar Dec 8 2015 file1'
+            attrs:
+              mode: 777
+              uid: 100
+              gid: 100
+              size: 10
+              atime: 1449583837
+              mtime: 1449583837
+          ,
+            filename: 'file2'
+            longname: '-rwxr--r-- 1 bar bar Dec 8 2015 file2'
+            attrs:
+              mode: 777
+              uid: 100
+              gid: 100
+              size: 15
+              atime: 1449583837
+              mtime: 1449585837
+          ])
+
         sftpStream.on 'FSTAT',  ->
           log.info {sftp: 'FSTAT', args: arguments }
         sftpStream.on 'LSTAT',  ->
           log.info {sftp: 'LSTAT', args: arguments }
         sftpStream.on 'READLINK',  ->
           log.info {sftp: 'READLINK', args: arguments }
-        sftpStream.on 'REALPATH', ->
+        sftpStream.on 'REALPATH', (reqid)->
           log.info {sftp: 'REALPATH', args: arguments }
-
+          #sftpStream.handle(reqid, new Buffer('/test'));
+          sftpStream.name(reqid, [
+            filename: '/test/'
+            longname: '-rwxr--r-- 1 bar bar Dec 8 2015 test'
+          ])
 
       session.on 'err', (err) ->
         log.error {container: container}, err
